@@ -1,39 +1,35 @@
-/* DAW FX RACK - REMASTERED LOGIC 
-   Features: Vertical/Horizontal Sliders (Candlesticks), Audio Processing, Drag n Drop
-*/
-
 const EFFECTS_CONFIG = {
-    eq: { 
-        id: 'eq', name: 'Parametric EQ', icon: 'fa-solid fa-sliders', 
-        params: { 
-            highGain: { name: 'High', type: 'v-slider', min: -24, max: 24, value: 0, step: 0.1, unit: 'dB' }, 
-            midGain:  { name: 'Mid',  type: 'v-slider', min: -24, max: 24, value: 0, step: 0.1, unit: 'dB' },
-            lowGain:  { name: 'Low',  type: 'v-slider', min: -24, max: 24, value: 0, step: 0.1, unit: 'dB' }
-        } 
+    eq: {
+        id: 'eq', name: 'Parametric EQ', icon: 'fa-solid fa-sliders',
+        params: {
+            highGain: { name: 'High', type: 'v-slider', min: -24, max: 24, value: 0, step: 0.1, unit: 'dB' },
+            midGain: { name: 'Mid', type: 'v-slider', min: -24, max: 24, value: 0, step: 0.1, unit: 'dB' },
+            lowGain: { name: 'Low', type: 'v-slider', min: -24, max: 24, value: 0, step: 0.1, unit: 'dB' }
+        }
     },
-    compressor: { 
-        id: 'compressor', name: 'Compressor', icon: 'fa-solid fa-compress', 
-        params: { 
-            threshold: { name: 'Thresh', type: 'v-slider', min: -60, max: 0, value: -24, step: 1, unit: 'dB' }, 
-            ratio:     { name: 'Ratio',  type: 'v-slider', min: 1, max: 20, value: 4, step: 0.1, unit: ':1' }, 
-            attack:    { name: 'Atk',    type: 'h-slider', min: 0, max: 1, value: 0.003, step: 0.001, unit: 's' }, 
-            release:   { name: 'Rel',    type: 'h-slider', min: 0.01, max: 1, value: 0.25, step: 0.001, unit: 's' } 
-        } 
+    compressor: {
+        id: 'compressor', name: 'Compressor', icon: 'fa-solid fa-compress',
+        params: {
+            threshold: { name: 'Thresh', type: 'v-slider', min: -60, max: 0, value: -24, step: 1, unit: 'dB' },
+            ratio: { name: 'Ratio', type: 'v-slider', min: 1, max: 20, value: 4, step: 0.1, unit: ':1' },
+            attack: { name: 'Atk', type: 'h-slider', min: 0, max: 1, value: 0.003, step: 0.001, unit: 's' },
+            release: { name: 'Rel', type: 'h-slider', min: 0.01, max: 1, value: 0.25, step: 0.001, unit: 's' }
+        }
     },
-    delay: { 
-        id: 'delay', name: 'Stereo Delay', icon: 'fa-solid fa-stopwatch', 
-        params: { 
-            time:     { name: 'Time',   type: 'h-slider', min: 0.01, max: 1.0, value: 0.3, step: 0.01, unit: 's' }, 
-            feedback: { name: 'F.Back', type: 'h-slider', min: 0, max: 0.9, value: 0.4, step: 0.01, unit: '%' }, 
-            mix:      { name: 'Mix',    type: 'h-slider', min: 0, max: 1, value: 0.4, step: 0.01, unit: '%' } 
-        } 
+    delay: {
+        id: 'delay', name: 'Stereo Delay', icon: 'fa-solid fa-stopwatch',
+        params: {
+            time: { name: 'Time', type: 'h-slider', min: 0.01, max: 1.0, value: 0.3, step: 0.01, unit: 's' },
+            feedback: { name: 'F.Back', type: 'h-slider', min: 0, max: 0.9, value: 0.4, step: 0.01, unit: '%' },
+            mix: { name: 'Mix', type: 'h-slider', min: 0, max: 1, value: 0.4, step: 0.01, unit: '%' }
+        }
     },
-    reverb: { 
-        id: 'reverb', name: 'Reverb', icon: 'fa-solid fa-water', 
-        params: { 
+    reverb: {
+        id: 'reverb', name: 'Reverb', icon: 'fa-solid fa-water',
+        params: {
             decay: { name: 'Decay', type: 'h-slider', min: 0.5, max: 5, value: 2, step: 0.1, unit: 's' },
-            mix:   { name: 'Mix',   type: 'h-slider', min: 0, max: 1, value: 0.3, step: 0.01, unit: '%' }
-        } 
+            mix: { name: 'Mix', type: 'h-slider', min: 0, max: 1, value: 0.3, step: 0.01, unit: '%' }
+        }
     }
 };
 
@@ -99,12 +95,11 @@ class DAWApp {
         this.audio.ctx = new AudioContext();
         this.audio.masterGain = this.audio.ctx.createGain();
         this.audio.analyser = this.audio.ctx.createAnalyser();
-        this.audio.analyser.fftSize = 2048; 
+        this.audio.analyser.fftSize = 2048;
         this.audio.masterGain.connect(this.audio.analyser);
         this.audio.analyser.connect(this.audio.ctx.destination);
         this.audio.meterData = new Float32Array(this.audio.analyser.fftSize);
-        
-        // Create Simple Reverb Impulse
+
         const sampleRate = this.audio.ctx.sampleRate;
         const length = sampleRate * 2.0;
         const impulse = this.audio.ctx.createBuffer(2, length, sampleRate);
@@ -121,8 +116,8 @@ class DAWApp {
             const input = ctx.createGain();
             const output = ctx.createGain();
             const group = { input, output, nodes: {} };
-            
-            switch(fxId) {
+
+            switch (fxId) {
                 case 'eq':
                     group.nodes.low = ctx.createBiquadFilter(); group.nodes.low.type = 'lowshelf'; group.nodes.low.frequency.value = 320;
                     group.nodes.mid = ctx.createBiquadFilter(); group.nodes.mid.type = 'peaking'; group.nodes.mid.frequency.value = 1000;
@@ -131,22 +126,22 @@ class DAWApp {
                     break;
                 case 'compressor':
                     group.nodes.comp = ctx.createDynamicsCompressor();
-                    input.connect(group.nodes.comp).connect(output); 
+                    input.connect(group.nodes.comp).connect(output);
                     break;
                 case 'delay':
                     group.nodes.delay = ctx.createDelay(2.0);
-                    group.nodes.feedback = ctx.createGain(); 
+                    group.nodes.feedback = ctx.createGain();
                     group.nodes.wet = ctx.createGain(); group.nodes.dry = ctx.createGain();
                     input.connect(group.nodes.dry).connect(output);
-                    input.connect(group.nodes.delay); 
-                    group.nodes.delay.connect(group.nodes.feedback).connect(group.nodes.delay); 
+                    input.connect(group.nodes.delay);
+                    group.nodes.delay.connect(group.nodes.feedback).connect(group.nodes.delay);
                     group.nodes.delay.connect(group.nodes.wet).connect(output);
                     break;
                 case 'reverb':
                     group.nodes.conv = ctx.createConvolver();
-                    group.nodes.conv.buffer = this.reverbBuffer; 
+                    group.nodes.conv.buffer = this.reverbBuffer;
                     group.nodes.dry = ctx.createGain(); group.nodes.wet = ctx.createGain();
-                    input.connect(group.nodes.dry).connect(output); 
+                    input.connect(group.nodes.dry).connect(output);
                     input.connect(group.nodes.conv).connect(group.nodes.wet).connect(output);
                     break;
             }
@@ -165,7 +160,7 @@ class DAWApp {
         this.dom.fileInput.addEventListener('change', this.handleFileLoad.bind(this));
         this.dom.downloadBtn.addEventListener('click', this.handleDownload.bind(this));
         this.dom.playBtn.addEventListener('click', async () => {
-            if(this.audio.ctx.state === 'suspended') await this.audio.ctx.resume();
+            if (this.audio.ctx.state === 'suspended') await this.audio.ctx.resume();
             this.state.isPlaying ? this.pause() : this.play();
         });
         this.dom.themeSelector.addEventListener('change', (e) => {
@@ -173,7 +168,7 @@ class DAWApp {
             localStorage.setItem('theme', e.target.value);
         });
         this.dom.resetBtn.addEventListener('click', this.handleGlobalReset.bind(this));
-        
+
         // Drag and Drop Reordering
         this.dom.fxChainContainer.addEventListener('dragstart', e => {
             e.target.classList.add('dragging');
@@ -187,23 +182,22 @@ class DAWApp {
             e.preventDefault();
             const dragging = document.querySelector('.dragging');
             const afterElement = getDragAfterElement(this.dom.fxChainContainer, e.clientX);
-            if(afterElement == null) { this.dom.fxChainContainer.appendChild(dragging); } 
+            if (afterElement == null) { this.dom.fxChainContainer.appendChild(dragging); }
             else { this.dom.fxChainContainer.insertBefore(dragging, afterElement); }
         });
-        
+
         this.dom.waveformContainer.addEventListener('click', e => {
-            if(!this.state.fileLoaded) return;
+            if (!this.state.fileLoaded) return;
             const rect = e.currentTarget.getBoundingClientRect();
             const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
             this.state.startOffset = pct * this.state.audioBuffer.duration;
-            if(this.state.isPlaying) { this.pause(); this.play(); } else { this.updatePlayhead(); }
+            if (this.state.isPlaying) { this.pause(); this.play(); } else { this.updatePlayhead(); }
         });
     }
 
     handleGlobalReset() {
-        if(!confirm("Reset semua efek ke pengaturan awal?")) return;
-        
-        // Reset parameters to config defaults
+        if (!confirm("Reset semua efek ke pengaturan awal?")) return;
+
         for (const fxId of this.state.fxChainOrder) {
             if (EFFECTS_CONFIG[fxId]) {
                 this.state.fxParams[fxId].bypass = false;
@@ -212,99 +206,141 @@ class DAWApp {
                 }
             }
         }
-        // Re-render UI and update audio nodes
+
         this.renderFXChain();
         this.showToast("Semua efek di-reset", "info");
     }
 
     async handleDownload() {
         if (!this.state.audioBuffer) return;
-        const oldText = this.dom.downloadBtn.innerHTML;
-        this.dom.downloadBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
-        this.dom.downloadBtn.disabled = true;
-        
+        const btn = this.dom.downloadBtn;
+        const oldText = btn.innerHTML;
+
+        // Animasi klik tombol
+        btn.classList.add('click-animate');
+        setTimeout(() => {
+            btn.classList.remove('click-animate');
+            btn.classList.add('release');
+            setTimeout(() => btn.classList.remove('release'), 150);
+        }, 150);
+
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+        btn.disabled = true;
+
         try {
             const offlineCtx = new OfflineAudioContext(
                 this.state.audioBuffer.numberOfChannels,
                 this.state.audioBuffer.length,
                 this.state.audioBuffer.sampleRate
             );
-            
+
             const offlineNodes = {};
             this.createFXNodes(offlineCtx, offlineNodes);
-            this.applyAllParams(offlineNodes, offlineCtx);
-            
-            // Update reverb impulse response for offline context
+
+            // Apply current parameters to offline nodes
+            for (const fxId in this.state.fxParams) {
+                for (const paramId in this.state.fxParams[fxId]) {
+                    const val = this.state.fxParams[fxId][paramId];
+                    this.updateNodeParam(fxId, paramId, val, offlineNodes, offlineCtx);
+                }
+            }
+
+            // Update reverb buffer if needed
             if (offlineNodes.reverb && !this.state.fxParams.reverb.bypass) {
                 const decay = this.state.fxParams.reverb.decay || 2.0;
                 offlineNodes.reverb.nodes.conv.buffer = this.createImpulseResponse(offlineCtx, decay, decay);
             }
-            
+
+            // Set up source and chain
             const source = offlineCtx.createBufferSource();
             source.buffer = this.state.audioBuffer;
+
             this.connectFXChain(source, offlineCtx.destination, offlineNodes);
             source.start(0);
-            
+
             const renderedBuffer = await offlineCtx.startRendering();
+
             const wav = this.bufferToWave(renderedBuffer);
             const url = URL.createObjectURL(wav);
-            const a = document.createElement('a'); 
-            a.style.display = 'none'; 
-            a.href = url; 
+
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
             a.download = `DAW_Render_${Date.now()}.wav`;
-            document.body.appendChild(a); 
-            a.click(); 
+            document.body.appendChild(a);
+            a.click();
+
             setTimeout(() => {
                 URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             }, 100);
-            
-            this.showToast("Render Selesai", 'success');
+
+            this.showToast("Render Selesai", "success");
         } catch (e) {
             console.error(e);
-            this.showToast("Gagal Render", 'error');
+            this.showToast("Gagal Render", "error");
         } finally {
-            this.dom.downloadBtn.innerHTML = oldText;
-            this.dom.downloadBtn.disabled = false;
+            btn.innerHTML = oldText;
+            btn.disabled = false;
         }
     }
 
     createImpulseResponse(ctx, duration, decay) {
         const len = ctx.sampleRate * duration;
         const buffer = ctx.createBuffer(2, len, ctx.sampleRate);
-        for(let c=0; c<2; c++) {
+        for (let c = 0; c < 2; c++) {
             const chData = buffer.getChannelData(c);
-            for(let i=0; i<len; i++) chData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/len, decay);
+            for (let i = 0; i < len; i++) chData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
         }
         return buffer;
     }
 
     bufferToWave(abuffer) {
-        const numOfChan = abuffer.numberOfChannels, 
-              length = abuffer.length * numOfChan * 2 + 44;
-        const buffer = new ArrayBuffer(length), 
-              view = new DataView(buffer);
-        const channels = [], 
-              sampleRate = abuffer.sampleRate;
-        let offset = 0, pos = 0;
+        const numOfChan = abuffer.numberOfChannels,
+            length = abuffer.length * numOfChan * 2 + 44;
+        const buffer = new ArrayBuffer(length),
+            view = new DataView(buffer);
+        const channels = [],
+            sampleRate = abuffer.sampleRate;
+        let offset = 0,
+            pos = 0;
 
-        function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
-        function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+        function setUint16(data) {
+            view.setUint16(pos, data, true);
+            pos += 2;
+        }
 
-        setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157); 
-        setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan); 
-        setUint32(sampleRate); setUint32(sampleRate * 2 * numOfChan); 
-        setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); 
+        function setUint32(data) {
+            view.setUint32(pos, data, true);
+            pos += 4;
+        }
+
+        setUint32(0x46464952);
+        setUint32(length - 8);
+        setUint32(0x45564157);
+
+        setUint32(0x20746d66);
+        setUint32(16);
+        setUint16(1);
+        setUint16(numOfChan);
+
+        setUint32(sampleRate);
+        setUint32(sampleRate * 2 * numOfChan);
+
+        setUint16(numOfChan * 2);
+        setUint16(16);
+
+        setUint32(0x61746164);
         setUint32(length - pos - 4);
 
-        for(let i = 0; i < abuffer.numberOfChannels; i++) 
+        for (let i = 0; i < abuffer.numberOfChannels; i++)
             channels.push(abuffer.getChannelData(i));
-        
-        while(pos < length) {
-            for(let i = 0; i < numOfChan; i++) {
+
+        while (pos < length) {
+            for (let i = 0; i < numOfChan; i++) {
                 let sample = Math.max(-1, Math.min(1, channels[i][offset]));
-                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
-                view.setInt16(pos, sample, true); 
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                view.setInt16(pos, sample, true);
                 pos += 2;
             }
             offset++;
@@ -312,10 +348,43 @@ class DAWApp {
         return new Blob([buffer], { type: "audio/wav" });
     }
 
-    applyAllParams(targetNodes, ctx) {
-        for (const fxId in this.state.fxParams) {
-            for (const paramId in this.state.fxParams[fxId]) {
-                this.updateNodeParam(fxId, paramId, this.state.fxParams[fxId][paramId]);
+    // Overloaded to accept optional offlineNodes and offlineCtx for apply during render or playback
+    updateNodeParam(fxId, paramId, value, targetNodes = this.audio.nodes, ctx = this.audio.ctx) {
+        const group = targetNodes[fxId];
+        if (!group) return;
+        const t = ctx.currentTime;
+
+        if (paramId === 'bypass') {
+            group.input.gain.setTargetAtTime(value ? 0 : 1, t, 0.05);
+            return;
+        }
+
+        const nodes = group.nodes;
+        if (fxId === 'eq') {
+            if (paramId === 'lowGain') nodes.low.gain.setTargetAtTime(value, t, 0.1);
+            if (paramId === 'midGain') nodes.mid.gain.setTargetAtTime(value, t, 0.1);
+            if (paramId === 'highGain') nodes.high.gain.setTargetAtTime(value, t, 0.1);
+        } else if (fxId === 'compressor') {
+            if (nodes.comp[paramId]) nodes.comp[paramId].setTargetAtTime(value, t, 0.1);
+        } else if (fxId === 'delay') {
+            if (paramId === 'time') nodes.delay.delayTime.setTargetAtTime(value, t, 0.2);
+            if (paramId === 'feedback') nodes.feedback.gain.setTargetAtTime(value, t, 0.1);
+            if (paramId === 'mix') {
+                nodes.dry.gain.setTargetAtTime(1 - value, t, 0.01);
+                nodes.wet.gain.setTargetAtTime(value, t, 0.01);
+            }
+        } else if (fxId === 'reverb') {
+            if (paramId === 'mix') {
+                nodes.dry.gain.setTargetAtTime(1 - value, t, 0.01);
+                nodes.wet.gain.setTargetAtTime(value, t, 0.01);
+            }
+        }
+    }
+
+    applyParams() {
+        for (const fx in this.state.fxParams) {
+            for (const p in this.state.fxParams[fx]) {
+                this.updateNodeParam(fx, p, this.state.fxParams[fx][p]);
             }
         }
     }
@@ -330,11 +399,11 @@ class DAWApp {
     async handleFileLoad(e) {
         const file = e.target.files[0];
         if (!file) return;
-        if(this.state.isPlaying) this.pause();
+        if (this.state.isPlaying) this.pause();
         this.dom.fileName.textContent = "Loading...";
         this.dom.playBtn.disabled = true;
         this.dom.downloadBtn.disabled = true;
-        
+
         try {
             const buffer = await file.arrayBuffer();
             this.state.audioBuffer = await this.audio.ctx.decodeAudioData(buffer);
@@ -345,16 +414,16 @@ class DAWApp {
             this.dom.downloadBtn.disabled = false;
             this.state.startOffset = 0;
             this.visualizers.waveform.draw(this.state.audioBuffer);
-            this.showToast("File Loaded Successfully", 'success');
+            this.showToast("File Loaded Successfully", "success");
         } catch (err) {
             this.dom.fileName.textContent = "Error";
             console.error(err);
-            this.showToast("Gagal memuat file audio", 'error');
+            this.showToast("Gagal memuat file audio", "error");
         }
     }
 
     play() {
-        if(!this.state.fileLoaded) return;
+        if (!this.state.fileLoaded) return;
         this.audio.sourceNode = this.audio.ctx.createBufferSource();
         this.audio.sourceNode.buffer = this.state.audioBuffer;
         this.connectFXChain(this.audio.sourceNode, this.audio.masterGain);
@@ -366,31 +435,31 @@ class DAWApp {
     }
 
     pause() {
-        if(this.audio.sourceNode) try { this.audio.sourceNode.stop(); } catch(e){}
-        if(this.state.isPlaying) {
+        if (this.audio.sourceNode) try { this.audio.sourceNode.stop(); } catch (e) {}
+        if (this.state.isPlaying) {
             this.state.startOffset += this.audio.ctx.currentTime - this.state.startTime;
-            if(this.state.startOffset >= this.state.audioBuffer.duration) this.state.startOffset = 0;
+            if (this.state.startOffset >= this.state.audioBuffer.duration) this.state.startOffset = 0;
         }
         this.state.isPlaying = false;
         this.dom.playIcon.className = 'fa-solid fa-play';
         cancelAnimationFrame(this.rafId);
     }
 
-    connectFXChain(source, dest) {
+    connectFXChain(source, dest, nodes = this.audio.nodes) {
         source.disconnect();
         let head = source;
         this.state.fxChainOrder.forEach(id => {
-            const node = this.audio.nodes[id];
-            if(node) { head.connect(node.input); head = node.output; }
+            const node = nodes[id];
+            if (node) { head.connect(node.input); head = node.output; }
         });
         head.connect(dest);
     }
 
     renderFXChain() {
         this.dom.fxChainContainer.innerHTML = '';
-        if(this.state.fxChainOrder.length > 0) this.dom.emptyMsg.style.display = 'none';
+        if (this.state.fxChainOrder.length > 0) this.dom.emptyMsg.style.display = 'none';
         this.state.fxChainOrder.forEach(id => {
-            if(EFFECTS_CONFIG[id]) this.dom.fxChainContainer.appendChild(this.createModule(id, EFFECTS_CONFIG[id]));
+            if (EFFECTS_CONFIG[id]) this.dom.fxChainContainer.appendChild(this.createModule(id, EFFECTS_CONFIG[id]));
         });
         this.applyParams();
     }
@@ -401,9 +470,9 @@ class DAWApp {
         card.dataset.fxId = id;
         card.querySelector('.module-icon').className = config.icon;
         card.querySelector('.fx-name').textContent = config.name;
-        
+
         const body = card.querySelector('.fx-body');
-        
+
         // Toggle
         const toggle = card.querySelector('.bypass-toggle');
         toggle.checked = !this.state.fxParams[id].bypass;
@@ -412,38 +481,37 @@ class DAWApp {
             this.updateNodeParam(id, 'bypass', this.state.fxParams[id].bypass);
             card.classList.toggle('bypassed', this.state.fxParams[id].bypass);
         });
-        if(this.state.fxParams[id].bypass) card.classList.add('bypassed');
+        if (this.state.fxParams[id].bypass) card.classList.add('bypassed');
 
         // Sliders
-        for(const paramId in config.params) {
+        for (const paramId in config.params) {
             body.appendChild(this.createSlider(id, paramId, config.params[paramId]));
         }
-        
+
         return card;
     }
 
     createSlider(fxId, paramId, conf) {
         const group = document.createElement('div');
-        // Determine orientation based on config type
         const isVertical = conf.type === 'v-slider';
         group.className = `slider-group ${isVertical ? 'vertical' : 'horizontal'}`;
-        
+
         const input = document.createElement('input');
         input.type = 'range';
         input.min = conf.min; input.max = conf.max; input.step = conf.step;
         input.value = this.state.fxParams[fxId][paramId];
-        if(isVertical) input.setAttribute('orient', 'vertical'); // Firefox legacy helper
+        if (isVertical) input.setAttribute('orient', 'vertical');
 
         const label = document.createElement('span');
         label.className = 'param-label'; label.textContent = conf.name;
-        
+
         const valDisplay = document.createElement('span');
         valDisplay.className = 'param-value';
 
         const updateVal = (v) => {
             let txt = parseFloat(v).toFixed(conf.step < 0.1 ? 2 : 1);
-            if(conf.unit === '%') txt = Math.round(v * 100) + '%';
-            else if(conf.unit === 'dB') txt = (v > 0 ? '+' : '') + Math.round(v) + 'dB';
+            if (conf.unit === '%') txt = Math.round(v * 100) + '%';
+            else if (conf.unit === 'dB') txt = (v > 0 ? '+' : '') + Math.round(v) + 'dB';
             else txt += conf.unit;
             valDisplay.textContent = txt;
         };
@@ -455,7 +523,6 @@ class DAWApp {
             updateVal(v);
         });
 
-        // Double click to reset
         input.addEventListener('dblclick', () => {
             input.value = conf.value;
             this.state.fxParams[fxId][paramId] = conf.value;
@@ -466,9 +533,8 @@ class DAWApp {
         });
 
         updateVal(input.value);
-        
-        // Reorder DOM for layout
-        if(isVertical) {
+
+        if (isVertical) {
             group.appendChild(valDisplay);
             group.appendChild(input);
             group.appendChild(label);
@@ -481,57 +547,16 @@ class DAWApp {
         return group;
     }
 
-    updateNodeParam(fxId, paramId, value) {
-        const group = this.audio.nodes[fxId];
-        if(!group) return;
-        const t = this.audio.ctx.currentTime;
-        
-        if(paramId === 'bypass') {
-            group.input.gain.setTargetAtTime(value ? 0 : 1, t, 0.05);
-            return;
-        }
-
-        const nodes = group.nodes;
-        if(fxId === 'eq') {
-            if(paramId === 'lowGain') nodes.low.gain.setTargetAtTime(value, t, 0.1);
-            if(paramId === 'midGain') nodes.mid.gain.setTargetAtTime(value, t, 0.1);
-            if(paramId === 'highGain') nodes.high.gain.setTargetAtTime(value, t, 0.1);
-        } else if(fxId === 'compressor') {
-             if(nodes.comp[paramId]) nodes.comp[paramId].setTargetAtTime(value, t, 0.1);
-        } else if(fxId === 'delay') {
-            if(paramId === 'time') nodes.delay.delayTime.setTargetAtTime(value, t, 0.2);
-            if(paramId === 'feedback') nodes.feedback.gain.setTargetAtTime(value, t, 0.1);
-            if(paramId === 'mix') { 
-                nodes.dry.gain.setTargetAtTime(1-value, t, 0.01); 
-                nodes.wet.gain.setTargetAtTime(value, t, 0.01); 
-            }
-        } else if(fxId === 'reverb') {
-            if(paramId === 'mix') { 
-                nodes.dry.gain.setTargetAtTime(1-value, t, 0.01); 
-                nodes.wet.gain.setTargetAtTime(value, t, 0.01); 
-            }
-        }
-    }
-
-    applyParams() {
-        for(const fx in this.state.fxParams) {
-            for(const p in this.state.fxParams[fx]) {
-                this.updateNodeParam(fx, p, this.state.fxParams[fx][p]);
-            }
-        }
-    }
-
     loop() {
         this.rafId = requestAnimationFrame(this.loop.bind(this));
-        if(this.state.isPlaying) {
+        if (this.state.isPlaying) {
             const now = this.audio.ctx.currentTime;
             const elapsed = now - this.state.startTime;
             const progress = (this.state.startOffset + elapsed) / this.state.audioBuffer.duration;
             this.updatePlayhead(progress);
             this.dom.currentTime.textContent = this.formatTime(this.state.startOffset + elapsed);
         }
-        
-        // Visualizers & Meter
+
         this.visualizers.oscilloscope?.draw();
         this.visualizers.spectrogram?.draw();
         this.updateMeter();
@@ -540,24 +565,23 @@ class DAWApp {
     updateMeter() {
         this.audio.analyser.getFloatTimeDomainData(this.audio.meterData);
         let sum = 0, peak = 0;
-        for(let i=0; i<this.audio.meterData.length; i+=4) { 
-            const a = this.audio.meterData[i]; 
-            sum += a*a; 
-            if(Math.abs(a) > peak) peak = Math.abs(a); 
+        for (let i = 0; i < this.audio.meterData.length; i += 4) {
+            const a = this.audio.meterData[i];
+            sum += a * a;
+            if (Math.abs(a) > peak) peak = Math.abs(a);
         }
-        const rms = Math.sqrt(sum / (this.audio.meterData.length/4));
+        const rms = Math.sqrt(sum / (this.audio.meterData.length / 4));
         const db = 20 * Math.log10(rms || 0.0001);
-        
+
         const pct = Math.min(100, Math.max(0, (db + 60) / 60 * 100));
         this.dom.masterMeterBar.style.width = `${pct}%`;
         this.dom.masterReadout.textContent = `${db.toFixed(1)} dB`;
-        
-        // Peak indicator
-        if (peak > this.state.masterPeak) { 
-            this.state.masterPeak = peak; 
+
+        if (peak > this.state.masterPeak) {
+            this.state.masterPeak = peak;
             this.state.lastPeakTime = Date.now();
-        } else if (Date.now() - this.state.lastPeakTime > 1000) { 
-            this.state.masterPeak *= 0.95; 
+        } else if (Date.now() - this.state.lastPeakTime > 1000) {
+            this.state.masterPeak *= 0.95;
         }
         const peakDb = 20 * Math.log10(this.state.masterPeak || 0.0001);
         const peakPct = Math.min(100, Math.max(0, (peakDb + 60) / 60 * 100));
@@ -571,16 +595,16 @@ class DAWApp {
     }
 
     formatTime(s) {
-        if(isNaN(s)) return "0:00";
-        const m = Math.floor(s/60);
-        const sc = Math.floor(s%60);
-        return `${m}:${sc.toString().padStart(2,'0')}`;
+        if (isNaN(s)) return "0:00";
+        const m = Math.floor(s / 60);
+        const sc = Math.floor(s % 60);
+        return `${m}:${sc.toString().padStart(2, '0')}`;
     }
-    
+
     showToast(msg, type = 'info') {
-        const t = document.createElement('div'); 
-        t.className = `toast ${type}`; 
-        t.innerHTML = `<i class="fa-solid ${type==='error'?'fa-circle-exclamation':type==='success'?'fa-check-circle':'fa-info-circle'}"></i> ${msg}`;
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${msg}`;
         this.dom.toastContainer.appendChild(t);
         setTimeout(() => {
             t.classList.add('fade-out');
@@ -594,37 +618,35 @@ class Waveform {
     constructor(canvas, progressCanvas) {
         this.canvas = canvas; this.ctx = canvas.getContext('2d');
         this.pCanvas = progressCanvas; this.pCtx = progressCanvas.getContext('2d');
-        this.resize(); window.addEventListener('resize', ()=>this.resize());
+        this.resize(); window.addEventListener('resize', () => this.resize());
     }
     resize() {
         this.canvas.width = this.canvas.offsetWidth; this.canvas.height = this.canvas.offsetHeight;
         this.pCanvas.width = this.pCanvas.offsetWidth; this.pCanvas.height = this.pCanvas.offsetHeight;
-        if(this.data) this.draw(this.data);
+        if (this.data) this.draw(this.data);
     }
     draw(buffer) {
-        if(buffer) this.data = buffer;
+        if (buffer) this.data = buffer;
         const d = this.data.getChannelData(0);
         const step = Math.ceil(d.length / this.canvas.width);
         const amp = this.canvas.height / 2;
-        
+
         const drawCtx = (ctx, color) => {
-            ctx.clearRect(0,0,ctx.canvas.width, ctx.canvas.height);
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.fillStyle = color;
             ctx.beginPath();
-            for(let i=0; i<this.canvas.width; i++) {
+            for (let i = 0; i < this.canvas.width; i++) {
                 let min = 1.0, max = -1.0;
-                for(let j=0; j<step; j++) {
-                    const val = d[i*step + j];
-                    if(val < min) min = val;
-                    if(val > max) max = val;
+                for (let j = 0; j < step; j++) {
+                    const val = d[i * step + j];
+                    if (val < min) min = val;
+                    if (val > max) max = val;
                 }
-                ctx.fillRect(i, amp * (1 + min), 1, Math.max(1, (max-min)*amp));
+                ctx.fillRect(i, amp * (1 + min), 1, Math.max(1, (max - min) * amp));
             }
         };
-        // Draw Main Grey Waveform
         drawCtx(this.ctx, getComputedStyle(document.documentElement).getPropertyValue('--text-muted'));
-        // Draw Overlay (same shape, different color handled by CSS mix-blend)
-        drawCtx(this.pCtx, '#fff'); 
+        drawCtx(this.pCtx, '#fff');
     }
 }
 
@@ -645,10 +667,10 @@ class Oscilloscope {
         this.ctx.beginPath();
         const sliceWidth = w * 1.0 / this.data.length;
         let x = 0;
-        for(let i=0; i<this.data.length; i++) {
+        for (let i = 0; i < this.data.length; i++) {
             const v = this.data[i] / 128.0;
-            const y = v * h/2;
-            if(i===0) this.ctx.moveTo(x,y); else this.ctx.lineTo(x,y);
+            const y = v * h / 2;
+            if (i === 0) this.ctx.moveTo(x, y); else this.ctx.lineTo(x, y);
             x += sliceWidth;
         }
         this.ctx.stroke();
@@ -669,17 +691,17 @@ class Spectrogram {
         this.ctx.fillRect(0, 0, w, h);
         const barW = (w / this.data.length) * 2.5;
         let x = 0;
-        for(let i=0; i<this.data.length; i++) {
+        for (let i = 0; i < this.data.length; i++) {
             const barH = (this.data[i] / 255) * h;
             this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
             this.ctx.globalAlpha = 0.6;
-            this.ctx.fillRect(x, h-barH, barW, barH);
+            this.ctx.fillRect(x, h - barH, barW, barH);
             x += barW + 1;
         }
     }
 }
 
-// Drag helper
+// Helper: Drag and Drop reorder support
 function getDragAfterElement(container, x) {
     const draggableElements = [...container.querySelectorAll('.fx-card:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
