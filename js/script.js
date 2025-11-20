@@ -45,7 +45,8 @@ class DAWApp {
             isPlaying: false, fileLoaded: false, audioBuffer: null,
             startTime: 0, startOffset: 0,
             fxChainOrder: JSON.parse(localStorage.getItem('fxChainOrder')) || ['eq', 'compressor', 'delay', 'reverb'],
-            fxParams: {}
+            fxParams: {},
+            masterPeak: 0, lastPeakTime: 0
         };
         this.visualizers = {};
     }
@@ -101,6 +102,7 @@ class DAWApp {
         this.audio.analyser.fftSize = 2048; 
         this.audio.masterGain.connect(this.audio.analyser);
         this.audio.analyser.connect(this.audio.ctx.destination);
+        this.audio.meterData = new Float32Array(this.audio.analyser.fftSize);
         
         // Create Simple Reverb Impulse
         const sampleRate = this.audio.ctx.sampleRate;
@@ -161,6 +163,7 @@ class DAWApp {
     initEventListeners() {
         this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
         this.dom.fileInput.addEventListener('change', this.handleFileLoad.bind(this));
+        this.dom.downloadBtn.addEventListener('click', this.handleDownload.bind(this));
         this.dom.playBtn.addEventListener('click', async () => {
             if(this.audio.ctx.state === 'suspended') await this.audio.ctx.resume();
             this.state.isPlaying ? this.pause() : this.play();
@@ -169,14 +172,9 @@ class DAWApp {
             document.documentElement.className = e.target.value;
             localStorage.setItem('theme', e.target.value);
         });
-        this.dom.resetBtn.addEventListener('click', () => {
-            if(confirm("Reset all effects?")) {
-                localStorage.removeItem('fxChainOrder');
-                location.reload();
-            }
-        });
+        this.dom.resetBtn.addEventListener('click', this.handleGlobalReset.bind(this));
         
-        // Drag and Drop Reordering (Simplified for brevity)
+        // Drag and Drop Reordering
         this.dom.fxChainContainer.addEventListener('dragstart', e => {
             e.target.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
@@ -202,6 +200,126 @@ class DAWApp {
         });
     }
 
+    handleGlobalReset() {
+        if(!confirm("Reset semua efek ke pengaturan awal?")) return;
+        
+        // Reset parameters to config defaults
+        for (const fxId of this.state.fxChainOrder) {
+            if (EFFECTS_CONFIG[fxId]) {
+                this.state.fxParams[fxId].bypass = false;
+                for (const paramId in EFFECTS_CONFIG[fxId].params) {
+                    this.state.fxParams[fxId][paramId] = EFFECTS_CONFIG[fxId].params[paramId].value;
+                }
+            }
+        }
+        // Re-render UI and update audio nodes
+        this.renderFXChain();
+        this.showToast("Semua efek di-reset", "info");
+    }
+
+    async handleDownload() {
+        if (!this.state.audioBuffer) return;
+        const oldText = this.dom.downloadBtn.innerHTML;
+        this.dom.downloadBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+        this.dom.downloadBtn.disabled = true;
+        
+        try {
+            const offlineCtx = new OfflineAudioContext(
+                this.state.audioBuffer.numberOfChannels,
+                this.state.audioBuffer.length,
+                this.state.audioBuffer.sampleRate
+            );
+            
+            const offlineNodes = {};
+            this.createFXNodes(offlineCtx, offlineNodes);
+            this.applyAllParams(offlineNodes, offlineCtx);
+            
+            // Update reverb impulse response for offline context
+            if (offlineNodes.reverb && !this.state.fxParams.reverb.bypass) {
+                const decay = this.state.fxParams.reverb.decay || 2.0;
+                offlineNodes.reverb.nodes.conv.buffer = this.createImpulseResponse(offlineCtx, decay, decay);
+            }
+            
+            const source = offlineCtx.createBufferSource();
+            source.buffer = this.state.audioBuffer;
+            this.connectFXChain(source, offlineCtx.destination, offlineNodes);
+            source.start(0);
+            
+            const renderedBuffer = await offlineCtx.startRendering();
+            const wav = this.bufferToWave(renderedBuffer);
+            const url = URL.createObjectURL(wav);
+            const a = document.createElement('a'); 
+            a.style.display = 'none'; 
+            a.href = url; 
+            a.download = `DAW_Render_${Date.now()}.wav`;
+            document.body.appendChild(a); 
+            a.click(); 
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+            
+            this.showToast("Render Selesai", 'success');
+        } catch (e) {
+            console.error(e);
+            this.showToast("Gagal Render", 'error');
+        } finally {
+            this.dom.downloadBtn.innerHTML = oldText;
+            this.dom.downloadBtn.disabled = false;
+        }
+    }
+
+    createImpulseResponse(ctx, duration, decay) {
+        const len = ctx.sampleRate * duration;
+        const buffer = ctx.createBuffer(2, len, ctx.sampleRate);
+        for(let c=0; c<2; c++) {
+            const chData = buffer.getChannelData(c);
+            for(let i=0; i<len; i++) chData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/len, decay);
+        }
+        return buffer;
+    }
+
+    bufferToWave(abuffer) {
+        const numOfChan = abuffer.numberOfChannels, 
+              length = abuffer.length * numOfChan * 2 + 44;
+        const buffer = new ArrayBuffer(length), 
+              view = new DataView(buffer);
+        const channels = [], 
+              sampleRate = abuffer.sampleRate;
+        let offset = 0, pos = 0;
+
+        function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+        function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+        setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157); 
+        setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan); 
+        setUint32(sampleRate); setUint32(sampleRate * 2 * numOfChan); 
+        setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); 
+        setUint32(length - pos - 4);
+
+        for(let i = 0; i < abuffer.numberOfChannels; i++) 
+            channels.push(abuffer.getChannelData(i));
+        
+        while(pos < length) {
+            for(let i = 0; i < numOfChan; i++) {
+                let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
+                view.setInt16(pos, sample, true); 
+                pos += 2;
+            }
+            offset++;
+        }
+        return new Blob([buffer], { type: "audio/wav" });
+    }
+
+    applyAllParams(targetNodes, ctx) {
+        for (const fxId in this.state.fxParams) {
+            for (const paramId in this.state.fxParams[fxId]) {
+                this.updateNodeParam(fxId, paramId, this.state.fxParams[fxId][paramId]);
+            }
+        }
+    }
+
     updateChainOrder() {
         const newOrder = [...this.dom.fxChainContainer.querySelectorAll('.fx-card')].map(el => el.dataset.fxId);
         this.state.fxChainOrder = newOrder;
@@ -215,6 +333,7 @@ class DAWApp {
         if(this.state.isPlaying) this.pause();
         this.dom.fileName.textContent = "Loading...";
         this.dom.playBtn.disabled = true;
+        this.dom.downloadBtn.disabled = true;
         
         try {
             const buffer = await file.arrayBuffer();
@@ -223,12 +342,14 @@ class DAWApp {
             this.dom.fileName.textContent = file.name;
             this.dom.totalDuration.textContent = this.formatTime(this.state.audioBuffer.duration);
             this.dom.playBtn.disabled = false;
+            this.dom.downloadBtn.disabled = false;
             this.state.startOffset = 0;
             this.visualizers.waveform.draw(this.state.audioBuffer);
-            this.showToast("File Loaded Successfully");
+            this.showToast("File Loaded Successfully", 'success');
         } catch (err) {
             this.dom.fileName.textContent = "Error";
             console.error(err);
+            this.showToast("Gagal memuat file audio", 'error');
         }
     }
 
@@ -334,6 +455,16 @@ class DAWApp {
             updateVal(v);
         });
 
+        // Double click to reset
+        input.addEventListener('dblclick', () => {
+            input.value = conf.value;
+            this.state.fxParams[fxId][paramId] = conf.value;
+            this.updateNodeParam(fxId, paramId, conf.value);
+            updateVal(conf.value);
+            valDisplay.classList.add('reset-flash');
+            setTimeout(() => valDisplay.classList.remove('reset-flash'), 300);
+        });
+
         updateVal(input.value);
         
         // Reorder DOM for layout
@@ -361,7 +492,6 @@ class DAWApp {
         }
 
         const nodes = group.nodes;
-        // Simplified mapping for brevity
         if(fxId === 'eq') {
             if(paramId === 'lowGain') nodes.low.gain.setTargetAtTime(value, t, 0.1);
             if(paramId === 'midGain') nodes.mid.gain.setTargetAtTime(value, t, 0.1);
@@ -371,9 +501,15 @@ class DAWApp {
         } else if(fxId === 'delay') {
             if(paramId === 'time') nodes.delay.delayTime.setTargetAtTime(value, t, 0.2);
             if(paramId === 'feedback') nodes.feedback.gain.setTargetAtTime(value, t, 0.1);
-            if(paramId === 'mix') { nodes.dry.gain.value = 1-value; nodes.wet.gain.value = value; }
+            if(paramId === 'mix') { 
+                nodes.dry.gain.setTargetAtTime(1-value, t, 0.01); 
+                nodes.wet.gain.setTargetAtTime(value, t, 0.01); 
+            }
         } else if(fxId === 'reverb') {
-            if(paramId === 'mix') { nodes.dry.gain.value = 1-value; nodes.wet.gain.value = value; }
+            if(paramId === 'mix') { 
+                nodes.dry.gain.setTargetAtTime(1-value, t, 0.01); 
+                nodes.wet.gain.setTargetAtTime(value, t, 0.01); 
+            }
         }
     }
 
@@ -402,17 +538,31 @@ class DAWApp {
     }
 
     updateMeter() {
-        const data = new Float32Array(this.audio.analyser.fftSize);
-        this.audio.analyser.getFloatTimeDomainData(data);
-        let sum = 0;
-        for(let i=0; i<data.length; i++) sum += data[i] * data[i];
-        let rms = Math.sqrt(sum / data.length);
-        let db = 20 * Math.log10(rms);
-        if(db < -60) db = -60;
+        this.audio.analyser.getFloatTimeDomainData(this.audio.meterData);
+        let sum = 0, peak = 0;
+        for(let i=0; i<this.audio.meterData.length; i+=4) { 
+            const a = this.audio.meterData[i]; 
+            sum += a*a; 
+            if(Math.abs(a) > peak) peak = Math.abs(a); 
+        }
+        const rms = Math.sqrt(sum / (this.audio.meterData.length/4));
+        const db = 20 * Math.log10(rms || 0.0001);
         
-        const pct = ((db + 60) / 60) * 100;
+        const pct = Math.min(100, Math.max(0, (db + 60) / 60 * 100));
         this.dom.masterMeterBar.style.width = `${pct}%`;
-        this.dom.masterReadout.textContent = `${Math.round(db)} dB`;
+        this.dom.masterReadout.textContent = `${db.toFixed(1)} dB`;
+        
+        // Peak indicator
+        if (peak > this.state.masterPeak) { 
+            this.state.masterPeak = peak; 
+            this.state.lastPeakTime = Date.now();
+        } else if (Date.now() - this.state.lastPeakTime > 1000) { 
+            this.state.masterPeak *= 0.95; 
+        }
+        const peakDb = 20 * Math.log10(this.state.masterPeak || 0.0001);
+        const peakPct = Math.min(100, Math.max(0, (peakDb + 60) / 60 * 100));
+        this.dom.masterPeak.style.left = `${peakPct}%`;
+        this.dom.masterPeak.style.display = 'block';
     }
 
     updatePlayhead(pct = 0) {
@@ -427,10 +577,15 @@ class DAWApp {
         return `${m}:${sc.toString().padStart(2,'0')}`;
     }
     
-    showToast(msg) {
-        const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+    showToast(msg, type = 'info') {
+        const t = document.createElement('div'); 
+        t.className = `toast ${type}`; 
+        t.innerHTML = `<i class="fa-solid ${type==='error'?'fa-circle-exclamation':type==='success'?'fa-check-circle':'fa-info-circle'}"></i> ${msg}`;
         this.dom.toastContainer.appendChild(t);
-        setTimeout(()=>t.remove(), 3000);
+        setTimeout(() => {
+            t.classList.add('fade-out');
+            setTimeout(() => t.remove(), 300);
+        }, 3000);
     }
 }
 
@@ -483,6 +638,8 @@ class Oscilloscope {
         const w = this.canvas.width = this.canvas.offsetWidth;
         const h = this.canvas.height = this.canvas.offsetHeight;
         this.analyser.getByteTimeDomainData(this.data);
+        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card');
+        this.ctx.fillRect(0, 0, w, h);
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
         this.ctx.beginPath();
@@ -508,11 +665,13 @@ class Spectrogram {
         const w = this.canvas.width = this.canvas.offsetWidth;
         const h = this.canvas.height = this.canvas.offsetHeight;
         this.analyser.getByteFrequencyData(this.data);
-        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card');
+        this.ctx.fillRect(0, 0, w, h);
         const barW = (w / this.data.length) * 2.5;
         let x = 0;
         for(let i=0; i<this.data.length; i++) {
             const barH = (this.data[i] / 255) * h;
+            this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
             this.ctx.globalAlpha = 0.6;
             this.ctx.fillRect(x, h-barH, barW, barH);
             x += barW + 1;
