@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="id" class="theme-dark">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DAW FX Rack - Remastered</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <link rel="stylesheet" href="css/style.css" />
-
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <link rel="stylesheet" href="css/style.css">
     <script src="js/script.js" defer></script>
 </head>
 <body>
@@ -46,7 +45,7 @@
                 <button id="upload-trigger-btn" class="btn btn-primary">
                     <i class="fa-solid fa-folder-open"></i> Load Audio
                 </button>
-                <input type="file" id="file-input" accept="audio/*" hidden />
+                <input type="file" id="file-input" accept="audio/*" hidden>
 
                 <button id="download-btn" class="btn btn-outline" disabled>
                     <i class="fa-solid fa-file-export"></i> Export WAV
@@ -66,7 +65,6 @@
         </aside>
 
         <main class="workspace">
-
             <section class="visualizer-area">
                 <div class="card playback-card">
                     <div class="playback-info">
@@ -75,7 +73,7 @@
                             <span id="current-time">0:00</span> / <span id="total-duration">0:00</span>
                         </div>
                     </div>
-
+                    
                     <div class="waveform-wrapper">
                         <div class="waveform-container" id="waveform-container">
                             <canvas id="waveform-canvas"></canvas>
@@ -108,14 +106,13 @@
                     <h3>Effects Chain</h3>
                     <button id="global-reset-btn" class="btn-text">Reset All</button>
                 </div>
-
+                
                 <div id="fx-chain-container" class="fx-grid"></div>
-
+                
                 <div id="empty-chain-msg">
                     <i class="fa-solid fa-spinner fa-spin"></i> Initializing Rack...
                 </div>
             </section>
-
         </main>
     </div>
 
@@ -128,7 +125,7 @@
                 <span class="fx-name">Effect</span>
                 <div class="fx-tools">
                     <label class="toggle-switch">
-                        <input type="checkbox" class="bypass-toggle" checked />
+                        <input type="checkbox" class="bypass-toggle" checked>
                         <span class="slider"></span>
                     </label>
                     <button class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></button>
@@ -137,6 +134,5 @@
             <div class="fx-body"></div>
         </div>
     </template>
-
 </body>
-                        </html>
+    </html>
